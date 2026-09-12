@@ -1,0 +1,100 @@
+global
+    log stdout format raw local0
+    maxconn 4096
+
+defaults
+    log     global
+    mode    http
+    option  tcplog
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    retries 3
+
+#-------------------------------------------------------------------
+# Stats + Prometheus metrics
+#-------------------------------------------------------------------
+frontend stats
+    bind *:8404
+    mode http
+    http-request use-service prometheus-exporter if { path /metrics }
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+
+#-------------------------------------------------------------------
+# PostgreSQL: :5000 write (leader), :5001 read (replicas)
+# Health check hits Patroni's REST API, which returns 200 only on the
+# role that matches the endpoint (/primary, /replica).
+#-------------------------------------------------------------------
+frontend pg_write_fe
+    bind *:5000
+    mode tcp
+    default_backend pg_write_be
+
+backend pg_write_be
+    mode tcp
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions init-addr last,libc,none
+{{PG_WRITE_SERVERS}}
+
+frontend pg_read_fe
+    bind *:5001
+    mode tcp
+    default_backend pg_read_be
+
+backend pg_read_be
+    mode tcp
+    balance roundrobin
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions init-addr last,libc,none
+{{PG_READ_SERVERS}}
+
+#-------------------------------------------------------------------
+# MySQL: :3307 write (primary), :3308 read (secondaries)
+# Health check hits a small HTTP sidecar next to each mysql node that
+# reports /write (200 when read_only=OFF) and /read (200 when a replica).
+#-------------------------------------------------------------------
+frontend mysql_write_fe
+    bind *:3307
+    mode tcp
+    default_backend mysql_write_be
+
+backend mysql_write_be
+    mode tcp
+    option httpchk GET /write
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions init-addr last,libc,none
+{{MYSQL_WRITE_SERVERS}}
+
+frontend mysql_read_fe
+    bind *:3308
+    mode tcp
+    default_backend mysql_read_be
+
+backend mysql_read_be
+    mode tcp
+    balance roundrobin
+    option httpchk GET /read
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions init-addr last,libc,none
+{{MYSQL_READ_SERVERS}}
+
+#-------------------------------------------------------------------
+# App tier: :80 -> PHP-FPM/Nginx and Node backends, round robin
+#-------------------------------------------------------------------
+frontend app_fe
+    bind *:80
+    mode http
+    option httplog
+    default_backend app_be
+
+backend app_be
+    mode http
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 init-addr last,libc,none
+{{APP_SERVERS}}
