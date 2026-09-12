@@ -1,0 +1,44 @@
+---
+name: lint
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install HAProxy, yamllint, shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y haproxy yamllint shellcheck
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ansible-lint
+        run: pip install ansible ansible-lint
+
+      - name: Install Ansible collections
+        working-directory: ansible
+        run: ansible-galaxy collection install -r requirements.yml -p ./collections
+
+      - name: haproxy -c
+        run: haproxy -c -f haproxy/haproxy.cfg
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-lint
+        working-directory: ansible
+        run: ansible-lint .
+
+      - name: shellcheck
+        run: find scripts postgres mysql redis haproxy -name '*.sh' -exec shellcheck {} +

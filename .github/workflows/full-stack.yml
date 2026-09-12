@@ -1,0 +1,107 @@
+---
+name: full-stack
+
+on:
+  schedule:
+    - cron: "17 3 * * *"  # nightly, off the hour to avoid GitHub's peak-load minute
+  workflow_dispatch:
+
+jobs:
+  full-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .env
+        run: cp .env.example .env
+
+      - name: make up (full topology)
+        timeout-minutes: 12
+        run: make up
+
+      - name: Wait for every service to report healthy
+        timeout-minutes: 6
+        run: |
+          set -eu
+          deadline=$(( $(date +%s) + 360 ))
+          while true; do
+            unhealthy=$(docker ps -a --format '{{.Names}} {{.Status}}' \
+              | grep -E 'pg[123]|mysql[123]|redis[123]|haproxy|app-|prometheus|grafana' \
+              | grep -v -c '(healthy)' || true)
+            if [ "$unhealthy" -eq 0 ]; then
+              echo "all core services healthy"
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "timed out waiting for services to become healthy" >&2
+              docker ps -a
+              docker compose logs --tail=50
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: make verify
+        timeout-minutes: 3
+        run: make verify
+
+      - name: make failover
+        timeout-minutes: 8
+        run: make failover
+
+      - name: Write failover results to the job summary
+        if: always()
+        run: |
+          latest=$(ls -t reports/failover-*.md 2>/dev/null | head -1 || true)
+          if [ -n "$latest" ]; then
+            cp "$latest" reports/failover-latest.md
+            cat "$latest" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "no failover report was produced" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: warn
+
+      - name: Refresh the README's failover results table
+        if: success()
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          readme = open("README.md").read()
+          latest = open("reports/failover-latest.md").read()
+          marker_start = "<!-- FAILOVER_RESULTS_START -->"
+          marker_end = "<!-- FAILOVER_RESULTS_END -->"
+          block = f"{marker_start}\n{latest}\n{marker_end}"
+          if marker_start in readme and marker_end in readme:
+              readme = re.sub(
+                  re.escape(marker_start) + r".*?" + re.escape(marker_end),
+                  block.replace("\\", "\\\\"),
+                  readme,
+                  flags=re.DOTALL,
+              )
+              open("README.md", "w").write(readme)
+          PYEOF
+
+      - name: Commit the refreshed results (bot commit)
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/failover-latest.md README.md
+          git diff --cached --quiet || git commit -m "chore: refresh nightly failover results [skip ci]"
+          git push
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail=200

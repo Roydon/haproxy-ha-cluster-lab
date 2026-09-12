@@ -71,7 +71,7 @@ services:
       - pg1-data:/home/postgres/data
     mem_limit: 384m
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8008/health"]
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -92,7 +92,7 @@ services:
       - pg2-data:/home/postgres/data
     mem_limit: 384m
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8008/health"]
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -114,7 +114,7 @@ services:
       - pg3-data:/home/postgres/data
     mem_limit: 384m
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8008/health"]
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -379,7 +379,7 @@ services:
       - "${HOST_PROMETHEUS_PORT:-9090}:9090"
     mem_limit: 256m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:9090/-/healthy"]
       interval: 5s
       timeout: 3s
       retries: 15
@@ -402,7 +402,7 @@ services:
       - "${HOST_GRAFANA_PORT:-3000}:3000"
     mem_limit: 192m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:3000/api/health"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -416,7 +416,7 @@ services:
     env_file: .env
     mem_limit: 128m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 3s
       retries: 15
@@ -430,7 +430,7 @@ services:
     env_file: .env
     mem_limit: 128m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 3s
       retries: 15
@@ -444,7 +444,7 @@ services:
     env_file: .env
     mem_limit: 128m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 3s
       retries: 15
@@ -474,7 +474,7 @@ services:
       - "${HOST_STATS_PORT:-8404}:8404"
     mem_limit: 96m
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8404/stats"]
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8404/stats"]
       interval: 5s
       timeout: 3s
       retries: 10
