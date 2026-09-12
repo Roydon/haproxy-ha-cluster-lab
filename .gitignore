@@ -1,0 +1,9 @@
+.DS_Store
+*.log
+.env
+reports/*.md
+!reports/.gitkeep
+!reports/failover-latest.md
+.molecule/
+__pycache__/
+*.retry
