@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: chrony must be running
+      ansible.builtin.command: systemctl is-active chrony
+      register: chrony_status
+      changed_when: false
+      failed_when: chrony_status.stdout != "active"
+
+    - name: ufw must be enabled
+      ansible.builtin.command: ufw status
+      register: ufw_status
+      changed_when: false
+      failed_when: "'Status: active' not in ufw_status.stdout"

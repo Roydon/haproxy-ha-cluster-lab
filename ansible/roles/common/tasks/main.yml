@@ -1,0 +1,70 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone | default('UTC') }}"
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure chrony is enabled and running
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started
+
+- name: Create deploy user
+  ansible.builtin.user:
+    name: "{{ common_deploy_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+
+- name: Allow the deploy user passwordless sudo
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ common_deploy_user }}"
+    content: "{{ common_deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: UFW default deny incoming
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: UFW default allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: UFW allow SSH from admin CIDR
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    src: "{{ allowed_ssh_cidr | default('0.0.0.0/0') }}"
+
+- name: UFW allow extra ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ ufw_extra_allow_ports | default([]) }}"
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+- name: Configure unattended-upgrades for security patches only (controlled, not automatic reboot)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/51unattended-upgrades-haha
+    mode: "0644"
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::Automatic-Reboot "false";

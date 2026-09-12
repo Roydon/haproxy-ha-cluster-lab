@@ -1,0 +1,60 @@
+scope: {{ patroni_scope }}
+namespace: /db/
+name: {{ inventory_hostname }}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: {{ ansible_host }}:8008
+
+etcd3:
+  hosts: {{ groups['etcd'] | map('extract', hostvars, 'ansible_host') | map('regex_replace', '$', ':' + etcd_client_port|string) | join(',') }}
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: true
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 10
+        max_replication_slots: 10
+        wal_log_hints: "on"
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  pg_hba:
+    - host replication {{ postgres_replication_user }} {{ hostvars[item]['ansible_host'] }}/32 md5
+{% for item in groups['app'] %}
+    - host all all {{ hostvars[item]['ansible_host'] }}/32 md5
+{% endfor %}
+    - host all all 127.0.0.1/32 md5
+  users:
+    {{ postgres_app_user }}:
+      password: {{ postgres_app_password }}
+      options:
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: {{ ansible_host }}:5432
+  data_dir: {{ postgres_data_dir }}
+  bin_dir: /usr/lib/postgresql/{{ postgres_version }}/bin
+  authentication:
+    replication:
+      username: {{ postgres_replication_user }}
+      password: {{ postgres_replication_password }}
+    superuser:
+      username: postgres
+      password: {{ postgres_superuser_password }}
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

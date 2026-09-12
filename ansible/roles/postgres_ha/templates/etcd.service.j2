@@ -1,0 +1,22 @@
+[Unit]
+Description=etcd (Patroni DCS)
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd \
+  --name={{ inventory_hostname }} \
+  --data-dir=/var/lib/etcd \
+  --listen-client-urls=http://0.0.0.0:{{ etcd_client_port }} \
+  --advertise-client-urls=http://{{ ansible_host }}:{{ etcd_client_port }} \
+  --listen-peer-urls=http://0.0.0.0:{{ etcd_peer_port }} \
+  --initial-advertise-peer-urls=http://{{ ansible_host }}:{{ etcd_peer_port }} \
+  --initial-cluster={{ groups['etcd'] | map('extract', hostvars, 'ansible_host') | zip(groups['etcd']) | map('reverse') | map('join', '=http://') | map('regex_replace', '$', ':' + etcd_peer_port|string) | join(',') }} \
+  --initial-cluster-state=new \
+  --initial-cluster-token=haha-etcd
+Restart=on-failure
+RestartSec=5
+User=etcd
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+---
+postgres_version: "16"
+patroni_scope: pg-cluster
+etcd_client_port: 2379
+etcd_peer_port: 2380
+postgres_data_dir: "/var/lib/postgresql/{{ postgres_version }}/main"

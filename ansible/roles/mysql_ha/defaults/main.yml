@@ -1,0 +1,2 @@
+---
+mysql_ha_role: replica   # overridden per-host in inventory/group_vars: "primary" for the first db host

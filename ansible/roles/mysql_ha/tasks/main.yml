@@ -1,0 +1,100 @@
+---
+- name: Install MySQL server and client
+  ansible.builtin.apt:
+    name:
+      - mysql-server-8.0
+      - mysql-client-8.0
+      - python3-pymysql
+    state: present
+    update_cache: true
+
+- name: Render my.cnf
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /etc/mysql/mysql.conf.d/haha.cnf
+    mode: "0644"
+  notify: restart mysql
+
+- name: Ensure mysqld is enabled and started
+  ansible.builtin.systemd:
+    name: mysql
+    enabled: true
+    state: started
+
+- name: Create replication user (primary only)
+  community.mysql.mysql_user:
+    name: "{{ mysql_replication_user }}"
+    password: "{{ mysql_replication_password }}"
+    host: "%"
+    priv: "*.*:REPLICATION SLAVE"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role == 'primary'
+
+- name: Create app database (primary only)
+  community.mysql.mysql_db:
+    name: "{{ mysql_app_db }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role == 'primary'
+
+- name: Create app user (primary only)
+  community.mysql.mysql_user:
+    name: "{{ mysql_app_user }}"
+    password: "{{ mysql_app_password }}"
+    host: "%"
+    priv: "{{ mysql_app_db }}.*:ALL"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role == 'primary'
+
+- name: Configure replication (replicas only)
+  community.mysql.mysql_replication:
+    mode: changeprimary
+    primary_host: "{{ hostvars[groups['mysql'][0]]['ansible_host'] }}"
+    primary_user: "{{ mysql_replication_user }}"
+    primary_password: "{{ mysql_replication_password }}"
+    primary_auto_position: true
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role != 'primary'
+
+- name: Start replication (replicas only)
+  community.mysql.mysql_replication:
+    mode: startreplica
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role != 'primary'
+
+- name: Set read_only on replicas
+  community.mysql.mysql_variables:
+    variable: read_only
+    value: "ON"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: mysql_ha_role != 'primary'
+
+- name: Install health-check sidecar
+  ansible.builtin.template:
+    src: health-server.py.j2
+    dest: /usr/local/bin/mysql-health-server.py
+    mode: "0755"
+
+- name: Install health-check sidecar systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mysql-health.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=MySQL HAProxy health sidecar
+      After=mysql.service
+
+      [Service]
+      ExecStart=/usr/bin/python3 /usr/local/bin/mysql-health-server.py
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: restart mysql-health
+
+- name: Enable and start health sidecar
+  ansible.builtin.systemd:
+    name: mysql-health
+    enabled: true
+    state: started
+    daemon_reload: true

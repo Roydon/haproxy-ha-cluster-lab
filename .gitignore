@@ -9,3 +9,4 @@ __pycache__/
 *.retry
 .claude/
 monitoring/mysqld-exporter/generated/
+ansible/group_vars/all.yml
