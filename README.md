@@ -9,10 +9,9 @@ Ansible roles for a real Ubuntu fleet.
 
 ## Status
 
-Work in progress — PostgreSQL HA, MySQL HA, HAProxy read/write routing for both, a
-Redis Cluster, and the app tier (PHP-FPM/Nginx + Node/Express behind HAProxy :80,
-round-robin, each proving a live Postgres + MySQL round trip) are up and verified.
-Monitoring, Ansible roles, docs and CI are still being built.
+Work in progress — the full Docker Compose lab (Postgres HA, MySQL HA, HAProxy
+routing, Redis Cluster, the app tier, and Prometheus + Grafana monitoring) is up
+and verified end-to-end. Ansible roles, docs and CI are still being built.
 
 ## Quickstart (partial, more to come)
 
