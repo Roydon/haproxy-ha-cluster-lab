@@ -184,6 +184,71 @@ services:
       timeout: 3s
       retries: 30
 
+  # --------------------------------------------------------------- Redis Cluster
+  redis1:
+    <<: *restart_policy
+    build: { context: ., dockerfile: redis/Dockerfile }
+    container_name: redis1
+    hostname: redis1
+    environment:
+      NODE_NAME: redis1
+    volumes:
+      - redis1-data:/data
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis2:
+    <<: *restart_policy
+    profiles: ["full"]
+    build: { context: ., dockerfile: redis/Dockerfile }
+    container_name: redis2
+    hostname: redis2
+    environment:
+      NODE_NAME: redis2
+    volumes:
+      - redis2-data:/data
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis3:
+    <<: *restart_policy
+    profiles: ["full"]
+    build: { context: ., dockerfile: redis/Dockerfile }
+    container_name: redis3
+    hostname: redis3
+    environment:
+      NODE_NAME: redis3
+    volumes:
+      - redis3-data:/data
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: forms the cluster once redis1 (and redis2/redis3, if this profile started
+  # them) are reachable, then exits. Safe to re-run (checks cluster_state first).
+  redis-cluster-init:
+    build: { context: ., dockerfile: redis/Dockerfile }
+    container_name: redis-cluster-init
+    entrypoint: ["/scripts/redis-cluster-init.sh"]
+    depends_on:
+      redis1:
+        condition: service_healthy
+    volumes:
+      - ./scripts/redis-cluster-init.sh:/scripts/redis-cluster-init.sh:ro
+    mem_limit: 64m
+    restart: "no"
+
   # --------------------------------------------------------------- HAProxy
   haproxy:
     <<: *restart_policy

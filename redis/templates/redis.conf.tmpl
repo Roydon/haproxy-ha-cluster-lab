@@ -1,0 +1,13 @@
+port 6379
+bind 0.0.0.0
+protected-mode no
+cluster-enabled yes
+cluster-config-file /data/nodes.conf
+cluster-node-timeout 5000
+# Hostname-based cluster bus (Redis 7+): nodes announce their compose service name
+# instead of a container IP, which is what lets the cluster bus keep working across
+# container restarts (IPs change, the compose DNS name doesn't).
+cluster-announce-hostname ${NODE_NAME}
+cluster-preferred-endpoint-type hostname
+appendonly yes
+dir /data
