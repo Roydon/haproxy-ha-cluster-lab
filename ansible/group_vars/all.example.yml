@@ -1,0 +1,39 @@
+---
+# Copy to group_vars/all.yml (gitignored) and fill in real values. Never commit
+# real credentials -- this file holds only safe, obviously-fake defaults.
+
+patroni_scope: pg-cluster
+postgres_version: "16"
+postgres_superuser_password: CHANGE_ME_postgres_superuser
+postgres_replication_user: replicator
+postgres_replication_password: CHANGE_ME_replication
+postgres_app_db: appdb
+postgres_app_user: appuser
+postgres_app_password: CHANGE_ME_app
+
+mysql_root_password: CHANGE_ME_mysql_root
+mysql_replication_user: repl
+mysql_replication_password: CHANGE_ME_mysql_repl
+mysql_app_db: appdb
+mysql_app_user: appuser
+mysql_app_password: CHANGE_ME_mysql_app
+
+redis_cluster_masters: "{{ groups['redis'] }}"
+
+grafana_admin_user: admin
+grafana_admin_password: CHANGE_ME_grafana
+
+# Ports match the lab exactly, so the same HAProxy config model / runbook applies.
+haproxy_pg_write_port: 5000
+haproxy_pg_read_port: 5001
+haproxy_mysql_write_port: 3307
+haproxy_mysql_read_port: 3308
+haproxy_app_port: 80
+haproxy_stats_port: 8404
+
+app_backend_port: 8080
+
+# common role
+timezone: UTC
+allowed_ssh_cidr: "0.0.0.0/0"  # tighten to your admin CIDR before running against real hosts
+ufw_extra_allow_ports: []

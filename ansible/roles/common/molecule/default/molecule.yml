@@ -1,0 +1,19 @@
+---
+driver:
+  name: docker
+platforms:
+  - name: haha-common-test
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    command: ""
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        timezone: UTC
+        allowed_ssh_cidr: "10.0.0.0/8"
+verifier:
+  name: ansible

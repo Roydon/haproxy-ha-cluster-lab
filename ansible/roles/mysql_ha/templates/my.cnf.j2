@@ -1,0 +1,9 @@
+[mysqld]
+server-id={{ 100 + groups['mysql'].index(inventory_hostname) }}
+log_bin=mysql-bin
+gtid_mode=ON
+enforce_gtid_consistency=ON
+binlog_format=ROW
+relay_log=mysql-relay-bin
+log_replica_updates=ON
+bind-address=0.0.0.0

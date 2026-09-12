@@ -1,0 +1,8 @@
+---
+common_packages:
+  - chrony
+  - ufw
+  - curl
+  - ca-certificates
+  - unattended-upgrades
+common_deploy_user: deploy

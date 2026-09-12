@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+# Same health sidecar the lab uses (see repo mysql/health/server.py): HAProxy's
+# httpchk hits /write (200 iff read_only=OFF) and /read (200 iff read_only=ON).
+import http.server, subprocess
+
+def read_only():
+    try:
+        out = subprocess.run(
+            ["mysql", "-h", "127.0.0.1", "-uroot", "-p{{ mysql_root_password }}",
+             "-N", "-B", "-e", "SELECT @@read_only"],
+            capture_output=True, text=True, timeout=3,
+        )
+        return out.stdout.strip() == "1" if out.returncode == 0 else None
+    except Exception:
+        return None
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        ro = read_only()
+        ok = {"/write": ro is False, "/read": ro is True, "/health": ro is not None}.get(self.path)
+        if ok is None:
+            self.send_response(404); self.end_headers(); return
+        self.send_response(200 if ok else 503); self.end_headers()
+
+http.server.ThreadingHTTPServer(("0.0.0.0", 8081), Handler).serve_forever()
