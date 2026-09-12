@@ -1,0 +1,36 @@
+---
+- name: Base build (all hosts)
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: PostgreSQL HA (Patroni + etcd)
+  hosts: postgres:etcd
+  become: true
+  roles:
+    - postgres_ha
+
+- name: MySQL HA (async replication + promotion script)
+  hosts: mysql
+  become: true
+  roles:
+    - mysql_ha
+
+- name: Redis Cluster
+  hosts: redis
+  become: true
+  roles:
+    - redis_cluster
+
+- name: HAProxy
+  hosts: haproxy
+  become: true
+  roles:
+    - haproxy
+
+- name: Monitoring (node_exporter everywhere, engine exporters + Prometheus/Grafana)
+  hosts: all
+  become: true
+  roles:
+    - monitoring

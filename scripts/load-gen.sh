@@ -4,10 +4,11 @@
 # long-lived client container per engine (see failover-test.sh for why, not a fresh
 # container per query).
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 [ -f .env ] || { echo ".env not found -- copy .env.example first" >&2; exit 1; }
 set -a
+# shellcheck disable=SC1091
 . ./.env
 set +a
 

@@ -3,14 +3,17 @@
   hosts: all
   become: true
   tasks:
-    - name: chrony must be running
-      ansible.builtin.command: systemctl is-active chrony
-      register: chrony_status
-      changed_when: false
-      failed_when: chrony_status.stdout != "active"
+    - name: Chrony must be running
+      ansible.builtin.service_facts:
+      register: common_verify_services
 
-    - name: ufw must be enabled
+    - name: Assert chrony is active
+      ansible.builtin.assert:
+        that:
+          - common_verify_services.ansible_facts.services['chrony.service'].state == 'running'
+
+    - name: Ufw must be enabled
       ansible.builtin.command: ufw status
-      register: ufw_status
+      register: common_verify_ufw_status
       changed_when: false
-      failed_when: "'Status: active' not in ufw_status.stdout"
+      failed_when: "'Status: active' not in common_verify_ufw_status.stdout"

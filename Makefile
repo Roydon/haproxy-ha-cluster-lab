@@ -44,7 +44,7 @@ load:
 lint:
 	haproxy -c -f haproxy/haproxy.cfg
 	yamllint .
-	ansible-lint ansible/ || true
+	cd ansible && ansible-lint .
 	find scripts postgres mysql redis haproxy -name '*.sh' -exec shellcheck {} +
 
 ## Apply the Ansible playbook to a real host group, e.g.

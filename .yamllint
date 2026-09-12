@@ -1,0 +1,16 @@
+---
+extends: default
+
+ignore: |
+  ansible/collections/
+  ansible/.ansible/
+  .molecule/
+  reports/
+
+rules:
+  line-length:
+    max: 160
+  braces:
+    max-spaces-inside: 1
+  truthy:
+    allowed-values: ["true", "false", "yes", "no"]

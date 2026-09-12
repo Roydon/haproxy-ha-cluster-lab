@@ -13,7 +13,7 @@
     src: my.cnf.j2
     dest: /etc/mysql/mysql.conf.d/haha.cnf
     mode: "0644"
-  notify: restart mysql
+  notify: Restart mysql
 
 - name: Ensure mysqld is enabled and started
   ansible.builtin.systemd:
@@ -22,7 +22,7 @@
     state: started
 
 - name: Create replication user (primary only)
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: "{{ mysql_replication_user }}"
     password: "{{ mysql_replication_password }}"
     host: "%"
@@ -31,14 +31,14 @@
   when: mysql_ha_role == 'primary'
 
 - name: Create app database (primary only)
-  community.mysql.mysql_db:
+  ansible.mysql.mysql_db:
     name: "{{ mysql_app_db }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   when: mysql_ha_role == 'primary'
 
 - name: Create app user (primary only)
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: "{{ mysql_app_user }}"
     password: "{{ mysql_app_password }}"
     host: "%"
@@ -47,7 +47,7 @@
   when: mysql_ha_role == 'primary'
 
 - name: Configure replication (replicas only)
-  community.mysql.mysql_replication:
+  ansible.mysql.mysql_replication:
     mode: changeprimary
     primary_host: "{{ hostvars[groups['mysql'][0]]['ansible_host'] }}"
     primary_user: "{{ mysql_replication_user }}"
@@ -57,13 +57,13 @@
   when: mysql_ha_role != 'primary'
 
 - name: Start replication (replicas only)
-  community.mysql.mysql_replication:
+  ansible.mysql.mysql_replication:
     mode: startreplica
     login_unix_socket: /var/run/mysqld/mysqld.sock
   when: mysql_ha_role != 'primary'
 
 - name: Set read_only on replicas
-  community.mysql.mysql_variables:
+  ansible.mysql.mysql_variables:
     variable: read_only
     value: "ON"
     login_unix_socket: /var/run/mysqld/mysqld.sock
@@ -90,7 +90,7 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify: restart mysql-health
+  notify: Restart mysql-health
 
 - name: Enable and start health sidecar
   ansible.builtin.systemd:

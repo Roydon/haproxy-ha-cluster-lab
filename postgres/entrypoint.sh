@@ -11,6 +11,7 @@ set -eu
 
 envsubst < /etc/patroni.yml.tmpl > /home/postgres/patroni.yml
 
+# shellcheck disable=SC2016  # single quotes intentional: envsubst does its own substitution
 envsubst '${POSTGRES_APP_USER} ${POSTGRES_APP_PASSWORD} ${POSTGRES_APP_DB}' \
   < /etc/pg-post-bootstrap.sh.tmpl > /home/postgres/pg-post-bootstrap.sh
 chmod +x /home/postgres/pg-post-bootstrap.sh

@@ -16,10 +16,12 @@ sed -e "s/SERVER_ID_PLACEHOLDER/${MYSQL_SERVER_ID}/" \
 
 mkdir -p /docker-entrypoint-initdb.d
 if [ "$MYSQL_ROLE" = "primary" ]; then
+  # shellcheck disable=SC2016  # single quotes intentional: envsubst does its own substitution
   envsubst '${MYSQL_REPLICATION_USER} ${MYSQL_REPLICATION_PASSWORD} ${MYSQL_APP_DB} ${MYSQL_APP_USER} ${MYSQL_APP_PASSWORD}' \
     < /etc/mysql-template/init-primary.sql.tmpl > /docker-entrypoint-initdb.d/01-init.sql
 else
   : "${MYSQL_PRIMARY_HOST:?MYSQL_PRIMARY_HOST must be set for a replica}"
+  # shellcheck disable=SC2016  # single quotes intentional: envsubst does its own substitution
   envsubst '${MYSQL_PRIMARY_HOST} ${MYSQL_REPLICATION_USER} ${MYSQL_REPLICATION_PASSWORD}' \
     < /etc/mysql-template/init-replica.sql.tmpl > /docker-entrypoint-initdb.d/01-replicate.sql
 fi

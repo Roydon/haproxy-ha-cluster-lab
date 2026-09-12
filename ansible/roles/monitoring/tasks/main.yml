@@ -1,0 +1,248 @@
+---
+- name: Compute this host's release-asset architecture suffix
+  ansible.builtin.set_fact:
+    monitoring_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+- name: Install node_exporter (all hosts)
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/prometheus/node_exporter/releases/download/
+      v{{ monitoring_node_exporter_version }}/node_exporter-{{ monitoring_node_exporter_version }}.linux-{{ monitoring_arch }}.tar.gz
+    dest: /usr/local/bin
+    remote_src: true
+    extra_opts: ["--strip-components=1", "--wildcards", "*/node_exporter"]
+    creates: /usr/local/bin/node_exporter
+
+- name: Install node_exporter systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Prometheus node_exporter
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/local/bin/node_exporter
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart node_exporter
+
+- name: Enable and start node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Install postgres_exporter (postgres hosts)
+  when: "'postgres' in group_names"
+  block:
+    - name: Download postgres_exporter
+      ansible.builtin.unarchive:
+        src: >-
+          https://github.com/prometheus-community/postgres_exporter/releases/download/
+          v{{ monitoring_postgres_exporter_version }}/postgres_exporter-{{ monitoring_postgres_exporter_version }}.linux-{{ monitoring_arch }}.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: ["--strip-components=1", "--wildcards", "*/postgres_exporter"]
+        creates: /usr/local/bin/postgres_exporter
+    - name: Install postgres_exporter systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/postgres_exporter.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus postgres_exporter
+          After=network.target patroni.service
+
+          [Service]
+          Environment=DATA_SOURCE_NAME=postgresql://postgres:{{ postgres_superuser_password }}@127.0.0.1:5432/postgres?sslmode=disable
+          ExecStart=/usr/local/bin/postgres_exporter
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart postgres_exporter
+    - name: Enable and start postgres_exporter
+      ansible.builtin.systemd:
+        name: postgres_exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+- name: Install mysqld_exporter (mysql hosts)
+  when: "'mysql' in group_names"
+  block:
+    - name: Download mysqld_exporter
+      ansible.builtin.unarchive:
+        src: >-
+          https://github.com/prometheus/mysqld_exporter/releases/download/
+          v{{ monitoring_mysqld_exporter_version }}/mysqld_exporter-{{ monitoring_mysqld_exporter_version }}.linux-{{ monitoring_arch }}.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: ["--strip-components=1", "--wildcards", "*/mysqld_exporter"]
+        creates: /usr/local/bin/mysqld_exporter
+    - name: Render mysqld_exporter my.cnf
+      ansible.builtin.copy:
+        dest: /etc/mysqld_exporter.my.cnf
+        mode: "0600"
+        content: |
+          [client]
+          user=root
+          password={{ mysql_root_password }}
+          host=127.0.0.1
+    - name: Install mysqld_exporter systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/mysqld_exporter.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus mysqld_exporter
+          After=network.target mysql.service
+
+          [Service]
+          ExecStart=/usr/local/bin/mysqld_exporter --config.my-cnf=/etc/mysqld_exporter.my.cnf
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart mysqld_exporter
+    - name: Enable and start mysqld_exporter
+      ansible.builtin.systemd:
+        name: mysqld_exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+- name: Install redis_exporter (redis hosts)
+  when: "'redis' in group_names"
+  block:
+    - name: Download redis_exporter
+      ansible.builtin.unarchive:
+        src: >-
+          https://github.com/oliver006/redis_exporter/releases/download/
+          v{{ monitoring_redis_exporter_version }}/redis_exporter-v{{ monitoring_redis_exporter_version }}.linux-{{ monitoring_arch }}.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: ["--strip-components=1", "--wildcards", "*/redis_exporter"]
+        creates: /usr/local/bin/redis_exporter
+    - name: Install redis_exporter systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/redis_exporter.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus redis_exporter
+          After=network.target redis-server.service
+
+          [Service]
+          ExecStart=/usr/local/bin/redis_exporter
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart redis_exporter
+    - name: Enable and start redis_exporter
+      ansible.builtin.systemd:
+        name: redis_exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+- name: Install Prometheus + Grafana (monitoring hosts)
+  when: "'monitoring' in group_names"
+  block:
+    - name: Download Prometheus
+      ansible.builtin.unarchive:
+        src: >-
+          https://github.com/prometheus/prometheus/releases/download/
+          v{{ monitoring_prometheus_version }}/prometheus-{{ monitoring_prometheus_version }}.linux-{{ monitoring_arch }}.tar.gz
+        dest: /opt
+        remote_src: true
+        creates: "/opt/prometheus-{{ monitoring_prometheus_version }}.linux-{{ monitoring_arch }}"
+    - name: Symlink prometheus binary
+      ansible.builtin.file:
+        src: "/opt/prometheus-{{ monitoring_prometheus_version }}.linux-{{ monitoring_arch }}/prometheus"
+        dest: /usr/local/bin/prometheus
+        state: link
+    - name: Create prometheus config directory
+      ansible.builtin.file:
+        path: /etc/prometheus
+        state: directory
+        mode: "0755"
+    - name: Render prometheus.yml
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        mode: "0644"
+      notify: Restart prometheus
+    - name: Copy alert rules
+      ansible.builtin.copy:
+        src: ../../../monitoring/alerts/rules.yml
+        dest: /etc/prometheus/alerts.yml
+        mode: "0644"
+      notify: Restart prometheus
+    - name: Install prometheus systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/prometheus.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/var/lib/prometheus
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart prometheus
+    - name: Create prometheus data directory
+      ansible.builtin.file:
+        path: /var/lib/prometheus
+        state: directory
+        mode: "0755"
+    - name: Enable and start prometheus
+      ansible.builtin.systemd:
+        name: prometheus
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Install Grafana apt key
+      ansible.builtin.get_url:
+        url: https://apt.grafana.com/gpg.key
+        dest: /usr/share/keyrings/grafana.asc
+        mode: "0644"
+    - name: Add Grafana apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/grafana.asc] https://apt.grafana.com stable main"
+        state: present
+        filename: grafana
+    - name: Install Grafana
+      ansible.builtin.apt:
+        name: grafana
+        state: present
+        update_cache: true
+    - name: Provision Grafana datasource + dashboard (same files the lab uses)
+      ansible.builtin.copy:
+        src: "../../../monitoring/grafana/provisioning/"
+        dest: /etc/grafana/provisioning/
+        mode: "0644"
+      notify: Restart grafana
+    - name: Override Grafana admin credentials
+      ansible.builtin.lineinfile:
+        path: /etc/grafana/grafana.ini
+        regexp: "^;?admin_password ="
+        line: "admin_password = {{ grafana_admin_password }}"
+        insertafter: "^\\[security\\]"
+      notify: Restart grafana
+    - name: Enable and start Grafana
+      ansible.builtin.systemd:
+        name: grafana-server
+        enabled: true
+        state: started

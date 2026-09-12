@@ -1,0 +1,48 @@
+---
+- name: Install Redis server
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+    update_cache: true
+
+- name: Render redis.conf
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    mode: "0640"
+    owner: redis
+    group: redis
+  notify: Restart redis
+
+- name: Enable and start Redis
+  ansible.builtin.systemd:
+    name: redis-server
+    enabled: true
+    state: started
+
+- name: Wait for all cluster nodes to accept connections
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[item]['ansible_host'] }}"
+    port: "{{ redis_cluster_port }}"
+    timeout: 60
+  loop: "{{ redis_cluster_masters }}"
+  run_once: true
+  delegate_to: "{{ groups['redis'][0] }}"
+
+- name: Check whether the cluster is already formed
+  ansible.builtin.command: >
+    redis-cli -h {{ hostvars[groups['redis'][0]]['ansible_host'] }} cluster info
+  register: redis_cluster_info
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['redis'][0] }}"
+
+- name: Create the Redis Cluster (only once, from the first redis host)
+  ansible.builtin.command: >
+    redis-cli --cluster create
+    {% for h in redis_cluster_masters %}{{ hostvars[h]['ansible_host'] }}:{{ redis_cluster_port }} {% endfor %}
+    --cluster-yes
+  when: "'cluster_state:ok' not in redis_cluster_info.stdout"
+  changed_when: true
+  run_once: true
+  delegate_to: "{{ groups['redis'][0] }}"

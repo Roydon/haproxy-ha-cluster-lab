@@ -1,6 +1,7 @@
 ---
-postgres_version: "16"
-patroni_scope: pg-cluster
-etcd_client_port: 2379
-etcd_peer_port: 2380
-postgres_data_dir: "/var/lib/postgresql/{{ postgres_version }}/main"
+postgres_ha_version: "{{ postgres_version | default('16') }}"
+postgres_ha_etcd_client_port: 2379
+postgres_ha_etcd_peer_port: 2380
+postgres_ha_data_dir: "/var/lib/postgresql/{{ postgres_ha_version }}/main"
+postgres_ha_etcd_version: "3.5.14"
+postgres_ha_patroni_version: "3.3.11"

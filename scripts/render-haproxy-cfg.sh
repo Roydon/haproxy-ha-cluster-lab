@@ -9,7 +9,7 @@ set -eu
 # HAPROXY_TMPL / HAPROXY_OUT let the HAProxy container point this at its own paths;
 # outside a container (e.g. regenerating the committed lint copy) the repo-relative
 # defaults apply.
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 TMPL="${HAPROXY_TMPL:-haproxy/templates/haproxy.cfg.tmpl}"
 OUT="${HAPROXY_OUT:-haproxy/haproxy.cfg}"
 WORK="$(mktemp -d)"

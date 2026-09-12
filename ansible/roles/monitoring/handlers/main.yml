@@ -1,0 +1,13 @@
+---
+- name: Restart node_exporter
+  ansible.builtin.systemd: { name: node_exporter, state: restarted }
+- name: Restart postgres_exporter
+  ansible.builtin.systemd: { name: postgres_exporter, state: restarted }
+- name: Restart mysqld_exporter
+  ansible.builtin.systemd: { name: mysqld_exporter, state: restarted }
+- name: Restart redis_exporter
+  ansible.builtin.systemd: { name: redis_exporter, state: restarted }
+- name: Restart prometheus
+  ansible.builtin.systemd: { name: prometheus, state: restarted, daemon_reload: true }
+- name: Restart grafana
+  ansible.builtin.systemd: { name: grafana-server, state: restarted }
