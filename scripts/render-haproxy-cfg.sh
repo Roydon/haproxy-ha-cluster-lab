@@ -36,6 +36,13 @@ build_block "$WORK/mysql_write"  3306 8081 mysql1 mysql2 mysql3
 build_block "$WORK/mysql_read"   3306 8081 mysql1 mysql2 mysql3
 build_block "$WORK/app"          8080 8080 app-php-1 app-php-2 app-node-1
 
+# Docker's embedded DNS is a fixed 127.0.0.11; Podman's aardvark-dns instead listens
+# on the network's own gateway IP. Read whichever one this container actually has
+# rather than hardcoding either, so the dynamic re-resolution in the resolvers
+# section above points somewhere that actually answers.
+DNS_NAMESERVER=$(awk '/^nameserver/ { print $2; exit }' /etc/resolv.conf 2>/dev/null || true)
+DNS_NAMESERVER="${DNS_NAMESERVER:-127.0.0.11}"
+
 # sed's `r` command inserts a file's contents after the matched line; follow with `d`
 # to drop the placeholder line itself.
 sed \
@@ -44,6 +51,7 @@ sed \
   -e "/{{MYSQL_WRITE_SERVERS}}/r $WORK/mysql_write" -e "/{{MYSQL_WRITE_SERVERS}}/d" \
   -e "/{{MYSQL_READ_SERVERS}}/r $WORK/mysql_read" -e "/{{MYSQL_READ_SERVERS}}/d" \
   -e "/{{APP_SERVERS}}/r $WORK/app" -e "/{{APP_SERVERS}}/d" \
+  -e "s/{{DNS_NAMESERVER}}/$DNS_NAMESERVER/" \
   "$TMPL" > "$OUT"
 
 echo "rendered $OUT"
