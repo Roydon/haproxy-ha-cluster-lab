@@ -249,6 +249,48 @@ services:
     mem_limit: 64m
     restart: "no"
 
+  # --------------------------------------------------------------- App tier
+  app-php-1:
+    <<: *restart_policy
+    build: { context: ., dockerfile: apps/php/Dockerfile }
+    container_name: app-php-1
+    hostname: app-php-1
+    env_file: .env
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  app-php-2:
+    <<: *restart_policy
+    profiles: ["full"]
+    build: { context: ., dockerfile: apps/php/Dockerfile }
+    container_name: app-php-2
+    hostname: app-php-2
+    env_file: .env
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  app-node-1:
+    <<: *restart_policy
+    profiles: ["full"]
+    build: { context: ., dockerfile: apps/node/Dockerfile }
+    container_name: app-node-1
+    hostname: app-node-1
+    env_file: .env
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
   # --------------------------------------------------------------- HAProxy
   haproxy:
     <<: *restart_policy
@@ -260,6 +302,7 @@ services:
       pg2: { condition: service_healthy }
       mysql1: { condition: service_healthy }
       mysql2: { condition: service_healthy }
+      app-php-1: { condition: service_healthy }
     ports:
       # Host-side ports are overridable in .env. Defaults avoid two common local
       # collisions: macOS AirPlay Receiver squats on 5000/7000, and rootless Podman
