@@ -3,7 +3,7 @@ groups:
   - name: haha-alerts
     rules:
       - alert: BackendDown
-        expr: haproxy_server_up == 0
+        expr: haproxy_server_status{state="DOWN"} == 1
         for: 15s
         labels: { severity: critical }
         annotations:

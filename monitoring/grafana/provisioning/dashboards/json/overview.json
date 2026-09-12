@@ -33,7 +33,7 @@
       "targets": [{ "expr": "redis_connected_clients", "legendFormat": "{{instance}}" }] },
     { "id": 8, "title": "HAProxy: backend server up/down", "type": "timeseries",
       "gridPos": {"h":8,"w":12,"x":0,"y":24},
-      "targets": [{ "expr": "haproxy_server_up", "legendFormat": "{{proxy}}/{{server}}" }] },
+      "targets": [{ "expr": "haproxy_server_status{state=\"UP\"}", "legendFormat": "{{proxy}}/{{server}}" }] },
     { "id": 9, "title": "Postgres replication lag (s)", "type": "timeseries",
       "gridPos": {"h":8,"w":6,"x":12,"y":24},
       "targets": [{ "expr": "pg_replication_lag_seconds", "legendFormat": "{{instance}}" }] },
