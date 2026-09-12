@@ -14,12 +14,16 @@ set -a
 set +a
 
 # `docker` is often only a shell alias (e.g. `docker=podman`), which doesn't exist in
-# this non-interactive script -- resolve a real binary explicitly instead.
+# this non-interactive script -- resolve a real binary explicitly instead. Naming the
+# wrapper function anything other than "docker" matters: on a host with real Docker,
+# ENGINE=docker, and a function named `docker` calling "$ENGINE" would call itself
+# forever instead of the real binary (only surfaced once this ran on a GitHub Actions
+# runner with real Docker -- Podman-only local testing never hit the collision).
 if command -v docker >/dev/null 2>&1; then ENGINE=docker
 elif command -v podman >/dev/null 2>&1; then ENGINE=podman
 else echo "neither docker nor podman found" >&2; exit 1
 fi
-docker() { "$ENGINE" "$@"; }
+CE() { "$ENGINE" "$@"; }
 
 NET=haha-net
 PASS=0
@@ -36,17 +40,17 @@ row() {
   fi
 }
 
-pg_client() { docker run --rm --network "$NET" -e PGPASSWORD="$POSTGRES_APP_PASSWORD" postgres:16-alpine psql -h haproxy -U "$POSTGRES_APP_USER" -d "$POSTGRES_APP_DB" "$@"; }
-mysql_client() { docker run --rm --network "$NET" mysql:8.4 mysql -h haproxy -u "$MYSQL_APP_USER" "-p$MYSQL_APP_PASSWORD" "$MYSQL_APP_DB" "$@"; }
-redis_client() { docker run --rm --network "$NET" redis:7-alpine redis-cli -c -h redis1 "$@"; }
+pg_client() { CE run --rm --network "$NET" -e PGPASSWORD="$POSTGRES_APP_PASSWORD" postgres:16-alpine psql -h haproxy -U "$POSTGRES_APP_USER" -d "$POSTGRES_APP_DB" "$@"; }
+mysql_client() { CE run --rm --network "$NET" mysql:8.4 mysql -h haproxy -u "$MYSQL_APP_USER" "-p$MYSQL_APP_PASSWORD" "$MYSQL_APP_DB" "$@"; }
+redis_client() { CE run --rm --network "$NET" redis:7-alpine redis-cli -c -h redis1 "$@"; }
 
 echo "=== HAProxy stats/metrics ==="
-docker run --rm --network "$NET" curlimages/curl -sf http://haproxy:8404/stats >/dev/null 2>&1
+CE run --rm --network "$NET" curlimages/curl -sf http://haproxy:8404/stats >/dev/null 2>&1
 row "haproxy stats page (:8404/stats)" $?
 
 echo "=== App tier (:80 via haproxy) -- distinct backends across 6 requests ==="
 BACKENDS=$(for _req in 1 2 3 4 5 6; do
-  docker run --rm --network "$NET" curlimages/curl -sf http://haproxy:80/ 2>/dev/null | grep -o '"hostname" *: *"[^"]*"' || true
+  CE run --rm --network "$NET" curlimages/curl -sf http://haproxy:80/ 2>/dev/null | grep -o '"hostname" *: *"[^"]*"' || true
 done | sort -u)
 echo "$BACKENDS" | sed 's/^/  /'
 BACKEND_COUNT=$(printf '%s\n' "$BACKENDS" | grep -c .)
