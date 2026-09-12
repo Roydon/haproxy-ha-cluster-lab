@@ -9,7 +9,7 @@ on:
 jobs:
   full-stack:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     permissions:
       contents: write
     steps:
@@ -19,7 +19,7 @@ jobs:
         run: cp .env.example .env
 
       - name: make up (full topology)
-        timeout-minutes: 12
+        timeout-minutes: 15
         run: make up
 
       - name: Wait for every service to report healthy

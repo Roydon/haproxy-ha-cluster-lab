@@ -55,6 +55,10 @@ services:
       retries: 10
 
   # --------------------------------------------------------------- PostgreSQL / Patroni
+  # pg1/pg2/pg3 healthcheck retries: 60 (300s), not the usual 20 (100s) -- a replica's
+  # first pg_basebackup from the leader took ~100s on GitHub Actions' 2-core runner
+  # under full-profile contention (3 concurrent Postgres bootstraps + mysql + redis),
+  # missing a 100s budget by seconds. 300s covers that with real margin.
   pg1:
     <<: *restart_policy
     build: { context: ., dockerfile: postgres/Dockerfile }
@@ -74,7 +78,7 @@ services:
       test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 60
 
   pg2:
     <<: *restart_policy
@@ -95,7 +99,7 @@ services:
       test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 60
 
   pg3:
     <<: *restart_policy
@@ -117,7 +121,7 @@ services:
       test: ["CMD", "curl", "-fs", "http://127.0.0.1:8008/health"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 60
 
   # --------------------------------------------------------------- MySQL (async
   # replication + a promotion script, not Group Replication — see README "Limitations":
