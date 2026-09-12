@@ -1,0 +1,34 @@
+groups:
+  - name: haha-alerts
+    rules:
+      - alert: BackendDown
+        expr: haproxy_server_up == 0
+        for: 15s
+        labels: { severity: critical }
+        annotations:
+          summary: "HAProxy backend server {{ $labels.proxy }}/{{ $labels.server }} is down"
+          description: "HAProxy has marked this server down via its health check for 15s+."
+
+      - alert: NodeDown
+        expr: up == 0
+        for: 30s
+        labels: { severity: critical }
+        annotations:
+          summary: "Target {{ $labels.job }}/{{ $labels.instance }} is unreachable"
+          description: "Prometheus has failed to scrape this target for 30s+."
+
+      - alert: PostgresReplicationLagHigh
+        expr: pg_replication_lag_seconds > 30
+        for: 15s
+        labels: { severity: warning }
+        annotations:
+          summary: "PostgreSQL replica {{ $labels.instance }} is {{ $value }}s behind"
+          description: "Replication lag exceeded 30s; check network and write load on the primary."
+
+      - alert: MysqlReplicationLagHigh
+        expr: mysql_slave_status_seconds_behind_source > 30
+        for: 15s
+        labels: { severity: warning }
+        annotations:
+          summary: "MySQL replica {{ $labels.instance }} is {{ $value }}s behind"
+          description: "Replication lag exceeded 30s; check network and write load on the primary."
