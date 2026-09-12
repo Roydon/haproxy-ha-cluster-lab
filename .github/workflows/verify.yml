@@ -24,17 +24,25 @@ jobs:
         timeout-minutes: 4
         run: |
           set -eu
+          # Exact container-name match (not substring) -- "mysql1" must not match
+          # "mysql1-exporter", which has no healthcheck at all and would otherwise
+          # count as permanently unhealthy forever.
+          targets="pg1 pg2 mysql1 mysql2 redis1 haproxy app-php-1 prometheus"
           deadline=$(( $(date +%s) + 240 ))
           while true; do
-            unhealthy=$(docker ps -a --format '{{.Names}} {{.Status}}' \
-              | grep -E 'pg1|pg2|mysql1|mysql2|redis1|haproxy|app-php-1|prometheus' \
-              | grep -v -c '(healthy)' || true)
+            unhealthy=0
+            for name in $targets; do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null || echo "missing")
+              if [ "$status" != "healthy" ]; then
+                unhealthy=$((unhealthy + 1))
+              fi
+            done
             if [ "$unhealthy" -eq 0 ]; then
               echo "all core services healthy"
               break
             fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
-              echo "timed out waiting for services to become healthy" >&2
+              echo "timed out waiting for services to become healthy ($unhealthy still not healthy)" >&2
               docker ps -a
               docker compose logs --tail=50
               exit 1
