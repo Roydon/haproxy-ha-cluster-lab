@@ -12,10 +12,11 @@
 # mid-container-creation, and killing the `run` client doesn't reliably kill the
 # container it started, leaving orphaned client containers behind.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 [ -f .env ] || { echo ".env not found -- copy .env.example first" >&2; exit 1; }
 set -a
+# shellcheck disable=SC1091
 . ./.env
 set +a
 

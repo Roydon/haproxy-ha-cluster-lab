@@ -5,10 +5,11 @@
 # Deliberately does NOT use `set -e` -- a failing check must be recorded as FAIL and
 # the script must keep going to produce a complete table, not abort on the first one.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 [ -f .env ] || { echo ".env not found -- copy .env.example first" >&2; exit 1; }
 set -a
+# shellcheck disable=SC1091
 . ./.env
 set +a
 
@@ -44,7 +45,7 @@ docker run --rm --network "$NET" curlimages/curl -sf http://haproxy:8404/stats >
 row "haproxy stats page (:8404/stats)" $?
 
 echo "=== App tier (:80 via haproxy) -- distinct backends across 6 requests ==="
-BACKENDS=$(for i in 1 2 3 4 5 6; do
+BACKENDS=$(for _req in 1 2 3 4 5 6; do
   docker run --rm --network "$NET" curlimages/curl -sf http://haproxy:80/ 2>/dev/null | grep -o '"hostname" *: *"[^"]*"' || true
 done | sort -u)
 echo "$BACKENDS" | sed 's/^/  /'

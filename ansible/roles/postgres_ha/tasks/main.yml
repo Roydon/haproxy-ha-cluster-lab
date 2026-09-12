@@ -30,12 +30,19 @@
 
 - name: Install Patroni via pip
   ansible.builtin.pip:
-    name: "patroni[etcd3]=={{ patroni_version | default('3.3.11') }}"
+    name: "patroni[etcd3]=={{ postgres_ha_patroni_version }}"
     executable: pip3
+
+- name: Compute this host's release-asset architecture suffix
+  ansible.builtin.set_fact:
+    postgres_ha_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+  when: "'etcd' in group_names"
 
 - name: Install etcd binary
   ansible.builtin.unarchive:
-    src: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version | default('v3.5.14') }}/etcd-{{ etcd_version | default('v3.5.14') }}-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}.tar.gz"
+    src: >-
+      https://github.com/etcd-io/etcd/releases/download/
+      v{{ postgres_ha_etcd_version }}/etcd-v{{ postgres_ha_etcd_version }}-linux-{{ postgres_ha_arch }}.tar.gz
     dest: /usr/local/bin
     remote_src: true
     extra_opts: ["--strip-components=1", "--wildcards", "*/etcd", "*/etcdctl"]
@@ -64,7 +71,7 @@
     dest: /etc/systemd/system/etcd.service
     mode: "0644"
   when: "'etcd' in group_names"
-  notify: restart etcd
+  notify: Restart etcd
 
 - name: Enable and start etcd
   ansible.builtin.systemd:
@@ -76,7 +83,7 @@
 
 - name: Create postgres data directory parent
   ansible.builtin.file:
-    path: "{{ postgres_data_dir | dirname }}"
+    path: "{{ postgres_ha_data_dir | dirname }}"
     state: directory
     owner: postgres
     group: postgres
@@ -89,7 +96,7 @@
     owner: postgres
     group: postgres
     mode: "0600"
-  notify: restart patroni
+  notify: Restart patroni
 
 - name: Install Patroni systemd unit
   ansible.builtin.copy:
@@ -111,7 +118,7 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify: restart patroni
+  notify: Restart patroni
 
 - name: Enable and start Patroni
   ansible.builtin.systemd:

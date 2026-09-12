@@ -4,6 +4,7 @@
 #                                               key always start; only `profiles: ["full"]` services
 #                                               are skipped)
 # See docs in README.md "Resource note" and CLAUDE.md's lite-profile CI spec.
+---
 name: haha
 
 x-restart-policy: &restart_policy

@@ -7,7 +7,7 @@ restapi:
   connect_address: {{ ansible_host }}:8008
 
 etcd3:
-  hosts: {{ groups['etcd'] | map('extract', hostvars, 'ansible_host') | map('regex_replace', '$', ':' + etcd_client_port|string) | join(',') }}
+  hosts: {{ groups['etcd'] | map('extract', hostvars, 'ansible_host') | map('regex_replace', '$', ':' + postgres_ha_etcd_client_port|string) | join(',') }}
 
 bootstrap:
   dcs:
@@ -43,7 +43,7 @@ bootstrap:
 postgresql:
   listen: 0.0.0.0:5432
   connect_address: {{ ansible_host }}:5432
-  data_dir: {{ postgres_data_dir }}
+  data_dir: {{ postgres_ha_data_dir }}
   bin_dir: /usr/lib/postgresql/{{ postgres_version }}/bin
   authentication:
     replication:

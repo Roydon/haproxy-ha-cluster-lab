@@ -1,10 +1,10 @@
 ---
-- name: restart mysql
+- name: Restart mysql
   ansible.builtin.systemd:
     name: mysql
     state: restarted
 
-- name: restart mysql-health
+- name: Restart mysql-health
   ansible.builtin.systemd:
     name: mysql-health
     state: restarted

@@ -10,3 +10,6 @@ __pycache__/
 .claude/
 monitoring/mysqld-exporter/generated/
 ansible/group_vars/all.yml
+ansible/collections/
+ansible/.ansible/
+.ansible/

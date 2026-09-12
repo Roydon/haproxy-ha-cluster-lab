@@ -1,0 +1,6 @@
+---
+monitoring_node_exporter_version: "1.8.2"
+monitoring_postgres_exporter_version: "0.15.0"
+monitoring_mysqld_exporter_version: "0.16.0"
+monitoring_redis_exporter_version: "1.62.0"
+monitoring_prometheus_version: "2.55.1"

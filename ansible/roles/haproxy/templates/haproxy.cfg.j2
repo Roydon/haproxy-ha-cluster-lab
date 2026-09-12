@@ -1,0 +1,94 @@
+global
+    log /dev/log local0
+    maxconn 4096
+
+defaults
+    log     global
+    mode    http
+    option  tcplog
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    retries 3
+
+frontend stats
+    bind *:{{ haproxy_stats_port }}
+    mode http
+    http-request use-service prometheus-exporter if { path /metrics }
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+
+frontend pg_write_fe
+    bind *:{{ haproxy_pg_write_port }}
+    mode tcp
+    default_backend pg_write_be
+
+backend pg_write_be
+    mode tcp
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+{% for h in groups['postgres'] %}
+    server {{ h }} {{ hostvars[h]['ansible_host'] }}:5432 check port 8008
+{% endfor %}
+
+frontend pg_read_fe
+    bind *:{{ haproxy_pg_read_port }}
+    mode tcp
+    default_backend pg_read_be
+
+backend pg_read_be
+    mode tcp
+    balance roundrobin
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+{% for h in groups['postgres'] %}
+    server {{ h }} {{ hostvars[h]['ansible_host'] }}:5432 check port 8008
+{% endfor %}
+
+frontend mysql_write_fe
+    bind *:{{ haproxy_mysql_write_port }}
+    mode tcp
+    default_backend mysql_write_be
+
+backend mysql_write_be
+    mode tcp
+    option httpchk GET /write
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+{% for h in groups['mysql'] %}
+    server {{ h }} {{ hostvars[h]['ansible_host'] }}:3306 check port 8081
+{% endfor %}
+
+frontend mysql_read_fe
+    bind *:{{ haproxy_mysql_read_port }}
+    mode tcp
+    default_backend mysql_read_be
+
+backend mysql_read_be
+    mode tcp
+    balance roundrobin
+    option httpchk GET /read
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+{% for h in groups['mysql'] %}
+    server {{ h }} {{ hostvars[h]['ansible_host'] }}:3306 check port 8081
+{% endfor %}
+
+frontend app_fe
+    bind *:{{ haproxy_app_port }}
+    mode http
+    option httplog
+    default_backend app_be
+
+backend app_be
+    mode http
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+{% for h in groups['app'] %}
+    server {{ h }} {{ hostvars[h]['ansible_host'] }}:{{ app_backend_port }} check
+{% endfor %}
