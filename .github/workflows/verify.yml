@@ -1,0 +1,77 @@
+---
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .env
+        run: cp .env.example .env
+
+      - name: make up-lite
+        timeout-minutes: 8
+        run: make up-lite
+
+      - name: Wait for every service to report healthy
+        timeout-minutes: 4
+        run: |
+          set -eu
+          deadline=$(( $(date +%s) + 240 ))
+          while true; do
+            unhealthy=$(docker ps -a --format '{{.Names}} {{.Status}}' \
+              | grep -E 'pg1|pg2|mysql1|mysql2|redis1|haproxy|app-php-1|prometheus' \
+              | grep -v -c '(healthy)' || true)
+            if [ "$unhealthy" -eq 0 ]; then
+              echo "all core services healthy"
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "timed out waiting for services to become healthy" >&2
+              docker ps -a
+              docker compose logs --tail=50
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: make verify
+        timeout-minutes: 3
+        run: make verify
+
+      - name: make failover
+        timeout-minutes: 6
+        env:
+          COMPOSE_PROFILES: lite
+        run: make failover
+
+      - name: Write failover results to the job summary
+        if: always()
+        run: |
+          latest=$(ls -t reports/failover-*.md 2>/dev/null | head -1 || true)
+          if [ -n "$latest" ]; then
+            cat "$latest" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "no failover report was produced" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: warn
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail=200

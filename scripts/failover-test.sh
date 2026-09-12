@@ -15,10 +15,16 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 
 [ -f .env ] || { echo ".env not found -- copy .env.example first" >&2; exit 1; }
+# An already-exported COMPOSE_PROFILES (e.g. from `COMPOSE_PROFILES=lite make
+# failover`) should win over .env's own stored value -- otherwise sourcing .env
+# below silently overwrites it and the report's "profile:" line lies about which
+# topology was actually tested.
+_incoming_compose_profiles="${COMPOSE_PROFILES:-}"
 set -a
 # shellcheck disable=SC1091
 . ./.env
 set +a
+[ -n "$_incoming_compose_profiles" ] && COMPOSE_PROFILES="$_incoming_compose_profiles"
 
 if command -v docker >/dev/null 2>&1 && docker version >/dev/null 2>&1; then ENGINE=docker
 elif command -v podman >/dev/null 2>&1; then ENGINE=podman

@@ -13,4 +13,7 @@ rules:
   braces:
     max-spaces-inside: 1
   truthy:
+    # GitHub Actions' "on:" key is a normal string key there, not a YAML boolean --
+    # this is a standard, widely-used exception for workflow files.
+    check-keys: false
     allowed-values: ["true", "false", "yes", "no"]
