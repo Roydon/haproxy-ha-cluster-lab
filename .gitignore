@@ -13,3 +13,4 @@ ansible/group_vars/all.yml
 ansible/collections/
 ansible/.ansible/
 .ansible/
+.serena/
