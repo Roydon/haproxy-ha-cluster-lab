@@ -7,3 +7,4 @@ reports/*.md
 .molecule/
 __pycache__/
 *.retry
+.claude/

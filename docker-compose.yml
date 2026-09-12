@@ -118,6 +118,72 @@ services:
       timeout: 3s
       retries: 20
 
+  # --------------------------------------------------------------- MySQL (async
+  # replication + a promotion script, not Group Replication — see README "Limitations":
+  # a deliberate, time-boxed call, not a fallback discovered mid-failure.
+  mysql1:
+    <<: *restart_policy
+    build: { context: ., dockerfile: mysql/Dockerfile }
+    container_name: mysql1
+    hostname: mysql1
+    env_file: .env
+    environment:
+      MYSQL_ROLE: primary
+      MYSQL_SERVER_ID: "1"
+    volumes:
+      - mysql1-data:/var/lib/mysql
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mysql2:
+    <<: *restart_policy
+    build: { context: ., dockerfile: mysql/Dockerfile }
+    container_name: mysql2
+    hostname: mysql2
+    env_file: .env
+    environment:
+      MYSQL_ROLE: replica
+      MYSQL_SERVER_ID: "2"
+      MYSQL_PRIMARY_HOST: mysql1
+    depends_on:
+      mysql1:
+        condition: service_healthy
+    volumes:
+      - mysql2-data:/var/lib/mysql
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mysql3:
+    <<: *restart_policy
+    profiles: ["full"]
+    build: { context: ., dockerfile: mysql/Dockerfile }
+    container_name: mysql3
+    hostname: mysql3
+    env_file: .env
+    environment:
+      MYSQL_ROLE: replica
+      MYSQL_SERVER_ID: "3"
+      MYSQL_PRIMARY_HOST: mysql1
+    depends_on:
+      mysql1:
+        condition: service_healthy
+    volumes:
+      - mysql3-data:/var/lib/mysql
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   # --------------------------------------------------------------- HAProxy
   haproxy:
     <<: *restart_policy
@@ -127,6 +193,8 @@ services:
     depends_on:
       pg1: { condition: service_healthy }
       pg2: { condition: service_healthy }
+      mysql1: { condition: service_healthy }
+      mysql2: { condition: service_healthy }
     ports:
       # Host-side ports are overridable in .env. Defaults avoid two common local
       # collisions: macOS AirPlay Receiver squats on 5000/7000, and rootless Podman

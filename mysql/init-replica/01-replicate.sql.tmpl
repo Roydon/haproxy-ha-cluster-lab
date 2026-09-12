@@ -1,0 +1,16 @@
+-- Runs once, only when this replica's data directory is first initialized.
+-- SOURCE_GET_SOURCE_PUBLIC_KEY lets the IO thread complete caching_sha2_password's RSA
+-- key exchange over this plain (non-TLS) internal link; the lab doesn't set up mutual
+-- TLS between database nodes (see docs/production checklist for what real deploys add).
+CHANGE REPLICATION SOURCE TO
+  SOURCE_HOST = '${MYSQL_PRIMARY_HOST}',
+  SOURCE_USER = '${MYSQL_REPLICATION_USER}',
+  SOURCE_PASSWORD = '${MYSQL_REPLICATION_PASSWORD}',
+  SOURCE_AUTO_POSITION = 1,
+  GET_SOURCE_PUBLIC_KEY = 1;
+START REPLICA;
+-- read_only/super_read_only are set here (after replication is configured), not in
+-- my.cnf: a static super_read_only would block the entrypoint's own root-password
+-- bootstrap and this very script during MySQL's temporary-server init phase.
+SET PERSIST read_only = ON;
+SET PERSIST super_read_only = ON;
