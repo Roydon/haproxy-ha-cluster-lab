@@ -9,9 +9,10 @@ Ansible roles for a real Ubuntu fleet.
 
 ## Status
 
-Work in progress — PostgreSQL HA (Patroni + etcd) and HAProxy read/write routing are
-up and verified. MySQL HA, Redis Cluster, the app tier, monitoring, Ansible roles,
-docs and CI are still being built. See `TASKS.md`-equivalent progress in commit history.
+Work in progress — PostgreSQL HA (Patroni + etcd), MySQL HA (async replication +
+promotion script), and HAProxy read/write routing for both are up and verified.
+Redis Cluster, the app tier, monitoring, Ansible roles, docs and CI are still being
+built.
 
 ## Quickstart (partial, more to come)
 
