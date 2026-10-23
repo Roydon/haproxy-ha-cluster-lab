@@ -1,9 +1,9 @@
-# Failover test report -- 20261022-084601
+# Failover test report -- 20261023-084113
 
 | Engine | Write downtime | Acknowledged writes | Persisted | Lost | Node rejoined as replica |
 |---|---|---|---|---|---|
-| PostgreSQL (Patroni, synchronous) | 27.51s | 17 | 17 | 0 | yes |
-| MySQL (async + promotion script) | 10.82s | 16 | 16 | 0 | yes |
+| PostgreSQL (Patroni, synchronous) | 36.1s | 17 | 17 | 0 | yes |
+| MySQL (async + promotion script) | 8.04s | 14 | 14 | 0 | yes |
 
 PostgreSQL uses `synchronous_mode` in Patroni: an acknowledged write is durable on
 the sync standby before the client sees success, so lost=0 is the expected and
