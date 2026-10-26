@@ -17,12 +17,12 @@ back automatically.
 ## Latest failover results (auto-updated nightly by `full-stack.yml`)
 
 <!-- FAILOVER_RESULTS_START -->
-# Failover test report -- 20261025-083409
+# Failover test report -- 20261026-090641
 
 | Engine | Write downtime | Acknowledged writes | Persisted | Lost | Node rejoined as replica |
 |---|---|---|---|---|---|
-| PostgreSQL (Patroni, synchronous) | 32.27s | 17 | 17 | 0 | yes |
-| MySQL (async + promotion script) | 8.19s | 14 | 14 | 0 | yes |
+| PostgreSQL (Patroni, synchronous) | 33.59s | 17 | 17 | 0 | yes |
+| MySQL (async + promotion script) | 8.04s | 13 | 13 | 0 | yes |
 
 PostgreSQL uses `synchronous_mode` in Patroni: an acknowledged write is durable on
 the sync standby before the client sees success, so lost=0 is the expected and
