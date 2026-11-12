@@ -1,8 +1,8 @@
-# Failover test report -- 20261111-111012
+# Failover test report -- 20261112-112836
 
 | Engine | Write downtime | Acknowledged writes | Persisted | Lost | Node rejoined as replica |
 |---|---|---|---|---|---|
-| PostgreSQL (Patroni, synchronous) | 26.6s | 17 | 17 | 0 | yes |
+| PostgreSQL (Patroni, synchronous) | 34.07s | 17 | 17 | 0 | yes |
 | MySQL (async + promotion script) | 10.78s | 15 | 15 | 0 | yes |
 
 PostgreSQL uses `synchronous_mode` in Patroni: an acknowledged write is durable on
